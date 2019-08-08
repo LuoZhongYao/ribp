@@ -66,6 +66,10 @@
 #define MIP_HEIP (1 << 10)
 #define MIP_MEIP (1 << 11)
 
+extern void hostapi_ecall(struct riscv32_vm *vm,
+	uint32_t *a0, uint32_t *a1, uint32_t *a2, uint32_t *a3,
+	uint32_t *a4, uint32_t *a5, uint32_t *a6, uint32_t *a7);
+
 static int riscv32_read_u8(struct riscv32_vm *m, uint32_t addr, uint8_t *val)
 {
 	if ((uint64_t)addr + 0 >= m->memsize)
@@ -630,7 +634,7 @@ int riscv32_cpu_exec(struct riscv32_vm *m)
 				err = 0;
 			}
 			c->reg[rd] = val2;
-			c->pc = c->pc + 4;
+			c->pc += 4;
 		break;
 
 		case 0:
@@ -638,8 +642,14 @@ int riscv32_cpu_exec(struct riscv32_vm *m)
 			case 0x000: /* ecall */
 				if (insn & 0x000fff80)
 					goto illegal_insn;
+#ifndef	RISCV_ECALL
+				hostapi_ecall(m, &c->a0, &c->a1, &c->a2, &c->a3,
+					&c->a4, &c->a5, &c->a6, &c->a7);
+				c->pc += 4;
+#else
 				cause = CAUSE_MACHINE_ECALL;
 				goto exception;
+#endif
 			break;
 
 			case 0x001: /* ebreak */

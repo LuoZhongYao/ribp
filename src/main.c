@@ -112,18 +112,21 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	vm = riscv32_vm(memsize);
-
-	for (int i = 0;i < 32;i++)
-		vm->cpu.reg[i] = 0x100 + i;
-	vm->cpu.pc = 0;
-	vm->cpu.sp = memsize;
-	vm->cpu.fp = memsize;
+	vm = riscv32_vm(memsize + 8);
 
 	while (0 < (rn = read(fd, buf, sizeof(buf)))) {
 		riscv32_load_rom(vm, buf, rn, off);
 		off += rn;
 	}
+
+	/* store hostapi */
+	off = (off + 3) & ~3;
+	riscv32_load_rom(vm, "\x73\x00\x00\x00\x67\x80\x00\x00", 8, off);
+	vm->cpu.pc = 0;
+	vm->cpu.sp = memsize;
+	vm->cpu.fp = memsize;
+	vm->cpu.a0 = off;
+
 	close(fd);
 
 	if (stub != NULL) {
